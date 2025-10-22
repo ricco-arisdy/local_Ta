@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ta_project/widgets/laporan/ChartPanen.dart';
+import 'package:ta_project/widgets/laporan/ChartPerawatan.dart';
 import 'package:ta_project/widgets/laporan/laporan_datalist.dart';
 import 'package:ta_project/widgets/laporan/laporan_summary.dart';
 import '../../viewsModels/laporan_view_models.dart';
@@ -136,7 +138,7 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
 
         const SizedBox(height: 16),
 
-        // Tab Content - ✅ Langsung tampilkan konten tanpa scroll terpisah
+        // Tab Content
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildTabContent(laporan, vm),
@@ -155,7 +157,7 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
         if (_tabController.index == 0) {
           return _buildDataCatatanContent(laporan);
         } else {
-          return _buildDataVisualContent();
+          return _buildDataVisualContent(laporan); // ✅ PASS laporan data
         }
       },
     );
@@ -223,7 +225,7 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
 
         const SizedBox(height: 20),
 
-        // Data Perawatan - Langsung tampil tanpa scroll
+        // Data Perawatan
         LaporanDataList(
           title: 'Data Perawatan',
           icon: Icons.build_circle,
@@ -235,7 +237,7 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
 
         const SizedBox(height: 24),
 
-        // Data Panen - Langsung tampil tanpa scroll
+        // Data Panen
         LaporanDataList(
           title: 'Data Panen',
           icon: Icons.eco,
@@ -248,8 +250,118 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
     );
   }
 
-  // ✅ Konten Data Visual - Placeholder
-  Widget _buildDataVisualContent() {
+  // ✅ UPDATED: Konten Data Visual - DENGAN CHART!
+  Widget _buildDataVisualContent(LaporanData laporan) {
+    // Check if there's data to visualize
+    final hasPerawatanData = laporan.perawatan.totalRecords > 0;
+    final hasPanenData = laporan.panen.totalRecords > 0;
+
+    if (!hasPerawatanData && !hasPanenData) {
+      return _buildNoDataForVisualization();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Header
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade50, Colors.blue.shade100],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue.shade200, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade600,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.bar_chart,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Visualisasi Data',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                    Text(
+                      'Grafik panen dan perawatan dari ${laporan.lahan.nama}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // ✅ CHART PANEN
+        if (hasPanenData) ...[
+          ChartPanenWidget(laporanData: laporan),
+          const SizedBox(height: 24),
+        ],
+
+        // ✅ CHART PERAWATAN
+        if (hasPerawatanData) ...[
+          ChartPerawatanWidget(laporanData: laporan),
+          const SizedBox(height: 24),
+        ],
+
+        // Info footer
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, size: 16, color: Colors.grey.shade600),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Data ditampilkan berdasarkan periode yang dipilih',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ Empty state untuk tab visual
+  Widget _buildNoDataForVisualization() {
     return Container(
       padding: const EdgeInsets.all(40),
       child: Center(
@@ -257,67 +369,40 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.blue.shade50, Colors.blue.shade100],
+              colors: [Colors.orange.shade50, Colors.orange.shade100],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.blue.shade200),
+            border: Border.all(color: Colors.orange.shade200),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.bar_chart,
+                Icons.show_chart,
                 size: 64,
-                color: Colors.blue.shade600,
+                color: Colors.orange.shade600,
               ),
               const SizedBox(height: 16),
               Text(
-                'Data Visual',
+                'Belum Ada Data untuk Divisualisasikan',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Fitur visualisasi data dalam bentuk grafik dan chart akan segera hadir',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.blue.shade700,
+                  color: Colors.orange.shade800,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
-              // Container(
-              //   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              //   decoration: BoxDecoration(
-              //     color: Colors.white.withOpacity(0.8),
-              //     borderRadius: BorderRadius.circular(20),
-              //     border: Border.all(color: Colors.blue.shade300),
-              //   ),
-              //   child: Row(
-              //     mainAxisSize: MainAxisSize.min,
-              //     children: [
-              //       Icon(
-              //         Icons.coming_soon,
-              //         size: 16,
-              //         color: Colors.blue.shade700,
-              //       ),
-              //       const SizedBox(width: 6),
-              //       Text(
-              //         'Coming Soon',
-              //         style: TextStyle(
-              //           fontSize: 12,
-              //           fontWeight: FontWeight.w600,
-              //           color: Colors.blue.shade700,
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
+              const SizedBox(height: 8),
+              Text(
+                'Tambahkan data perawatan atau panen untuk melihat grafik visualisasi',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.orange.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
