@@ -65,7 +65,7 @@ class ChartPerawatanWidget extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Material perawatan per bulan (Kg & Liter)',
+                      'Material perawatan (Kg & Liter)',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey,
@@ -79,25 +79,22 @@ class ChartPerawatanWidget extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Legend
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegendItem('Material Padat (Kg)', const Color(0xFF2196F3)),
-              const SizedBox(width: 24),
-              _buildLegendItem(
-                  'Material Cair (Liter)', const Color(0xFFFF9800)),
-            ],
+          // Chart Material Padat (Kg)
+          _buildSingleChart(
+            chartData,
+            'Material Padat (Kg)',
+            'kg',
+            const Color(0xFFFF5722),
           ),
 
           const SizedBox(height: 24),
 
-          // Chart
-          SizedBox(
-            height: 250,
-            child: LineChart(
-              _buildLineChartData(chartData),
-            ),
+          // Chart Material Cair (Liter)
+          _buildSingleChart(
+            chartData,
+            'Material Cair (Liter)',
+            'liter',
+            const Color(0xFF2196F3),
           ),
 
           const SizedBox(height: 16),
@@ -109,27 +106,182 @@ class ChartPerawatanWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
+  Widget _buildSingleChart(
+    Map<String, dynamic> chartData,
+    String title,
+    String dataKey,
+    Color color,
+  ) {
+    final months = chartData['months'] as List<String>;
+    final data = chartData[dataKey] as List<double>;
+
+    // Find max value
+    double maxValue = data.isEmpty ? 0 : data.reduce((a, b) => a > b ? a : b);
+    maxValue = maxValue * 1.2; // Add 20% padding
+    if (maxValue == 0) maxValue = 100;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 16,
-          height: 4,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
+        // Legend
+        Row(
+          children: [
+            Container(
+              width: 16,
+              height: 4,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-            fontWeight: FontWeight.w500,
+
+        const SizedBox(height: 12),
+
+        // Chart
+        SizedBox(
+          height: 200,
+          child: LineChart(
+            _buildSingleLineChartData(
+              months,
+              data,
+              maxValue,
+              color,
+              dataKey,
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  LineChartData _buildSingleLineChartData(
+    List<String> months,
+    List<double> data,
+    double maxY,
+    Color color,
+    String dataKey,
+  ) {
+    return LineChartData(
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: maxY / 5,
+        getDrawingHorizontalLine: (value) {
+          return FlLine(
+            color: Colors.grey.shade200,
+            strokeWidth: 1,
+            dashArray: [5, 5],
+          );
+        },
+      ),
+      titlesData: FlTitlesData(
+        // Left Y-axis
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 50,
+            interval: maxY / 5,
+            getTitlesWidget: (value, meta) {
+              if (value == meta.max) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  '${value.toInt()}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+              );
+            },
+          ),
+        ),
+        rightTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        topTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
+        ),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 30,
+            interval: 1,
+            getTitlesWidget: (value, meta) {
+              final index = value.toInt();
+              if (index >= 0 && index < months.length) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    months[index],
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }
+              return const Text('');
+            },
+          ),
+        ),
+      ),
+      borderData: FlBorderData(
+        show: true,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+          left: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+      ),
+      minX: 0,
+      maxX: months.length > 0 ? months.length.toDouble() - 1 : 0,
+      minY: 0,
+      maxY: maxY,
+      lineBarsData: [
+        _buildLineChartBarData(
+          data,
+          color,
+          dataKey,
+        ),
+      ],
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipItems: (touchedSpots) {
+            return touchedSpots.map((spot) {
+              final monthIndex = spot.x.toInt();
+              final month =
+                  monthIndex < months.length ? months[monthIndex] : '';
+              final unit = dataKey == 'kg' ? 'kg' : 'liter';
+
+              return LineTooltipItem(
+                '$month\n${spot.y.toInt()} $unit',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              );
+            }).toList();
+          },
+        ),
+        handleBuiltInTouches: true,
+      ),
     );
   }
 
@@ -179,7 +331,7 @@ class ChartPerawatanWidget extends StatelessWidget {
       // Format month label
       try {
         final date = DateTime.parse('$monthKey-01');
-        months.add(DateFormat('MMM yy', 'id_ID').format(date));
+        months.add(DateFormat('MMM', 'id_ID').format(date));
       } catch (e) {
         months.add(monthKey);
       }
@@ -211,190 +363,6 @@ class ChartPerawatanWidget extends StatelessWidget {
     };
   }
 
-  LineChartData _buildLineChartData(Map<String, dynamic> chartData) {
-    final months = chartData['months'] as List<String>;
-    final kgData = chartData['kg'] as List<double>;
-    final literData = chartData['liter'] as List<double>;
-
-    // Find max values for both Y-axes
-    double maxKg = kgData.isEmpty ? 0 : kgData.reduce((a, b) => a > b ? a : b);
-    double maxLiter =
-        literData.isEmpty ? 0 : literData.reduce((a, b) => a > b ? a : b);
-
-    // Add 20% padding
-    maxKg = maxKg * 1.2;
-    maxLiter = maxLiter * 1.2;
-
-    if (maxKg == 0) maxKg = 100;
-    if (maxLiter == 0) maxLiter = 100;
-
-    // Use unified scale for better visualization
-    final maxY = maxKg > maxLiter ? maxKg : maxLiter;
-
-    return LineChartData(
-      gridData: FlGridData(
-        show: true,
-        drawVerticalLine: false,
-        horizontalInterval: maxY / 5,
-        getDrawingHorizontalLine: (value) {
-          return FlLine(
-            color: Colors.grey.shade200,
-            strokeWidth: 1,
-          );
-        },
-      ),
-      titlesData: FlTitlesData(
-        // Left Y-axis: Kg (Blue)
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 50,
-            interval: maxKg / 5,
-            getTitlesWidget: (value, meta) {
-              if (value == 0 || value == meta.max) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(
-                  '${value.toInt()}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF2196F3),
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.right,
-                ),
-              );
-            },
-          ),
-          axisNameWidget: const Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: Text(
-              'Kg',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF2196F3),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        // Right Y-axis: Liter (Orange)
-        rightTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 50,
-            interval: maxLiter / 5,
-            getTitlesWidget: (value, meta) {
-              if (value == 0 || value == meta.max) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Text(
-                  '${value.toInt()}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFFFF9800),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              );
-            },
-          ),
-          axisNameWidget: const Padding(
-            padding: EdgeInsets.only(left: 8),
-            child: Text(
-              'Liter',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFFFF9800),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        topTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 30,
-            interval: 1,
-            getTitlesWidget: (value, meta) {
-              final index = value.toInt();
-              if (index >= 0 && index < months.length) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    months[index],
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                );
-              }
-              return const Text('');
-            },
-          ),
-        ),
-      ),
-      borderData: FlBorderData(
-        show: true,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-          left: BorderSide(color: Colors.grey.shade300, width: 1),
-          right: BorderSide(color: Colors.grey.shade300, width: 1),
-        ),
-      ),
-      minX: 0,
-      maxX: months.length.toDouble() - 1,
-      minY: 0,
-      maxY: maxY,
-      lineBarsData: [
-        // Line for Kg (Blue) - mapped to left axis
-        _buildLineChartBarData(
-          kgData,
-          const Color(0xFF2196F3),
-          'Material Kg',
-        ),
-        // Line for Liter (Orange) - mapped to right axis
-        _buildLineChartBarData(
-          literData,
-          const Color(0xFFFF9800),
-          'Material Liter',
-        ),
-      ],
-      lineTouchData: LineTouchData(
-        touchTooltipData: LineTouchTooltipData(
-          getTooltipItems: (touchedSpots) {
-            return touchedSpots.map((spot) {
-              final monthIndex = spot.x.toInt();
-              final months = chartData['months'] as List<String>;
-              final month =
-                  monthIndex < months.length ? months[monthIndex] : '';
-              final isKg = spot.barIndex == 0;
-
-              return LineTooltipItem(
-                '${isKg ? 'Material Kg' : 'Material Liter'}\n$month\n${spot.y.toInt()} ${isKg ? 'kg' : 'liter'}',
-                TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              );
-            }).toList();
-          },
-        ),
-        handleBuiltInTouches: true,
-      ),
-    );
-  }
-
   LineChartBarData _buildLineChartBarData(
     List<double> data,
     Color color,
@@ -403,10 +371,7 @@ class ChartPerawatanWidget extends StatelessWidget {
     // Convert data to FlSpot
     final spots = <FlSpot>[];
     for (int i = 0; i < data.length; i++) {
-      if (data[i] > 0) {
-        // Only add non-zero values
-        spots.add(FlSpot(i.toDouble(), data[i]));
-      }
+      spots.add(FlSpot(i.toDouble(), data[i]));
     }
 
     return LineChartBarData(
@@ -421,15 +386,13 @@ class ChartPerawatanWidget extends StatelessWidget {
         getDotPainter: (spot, percent, barData, index) {
           return FlDotCirclePainter(
             radius: 4,
-            color: Colors.white,
-            strokeWidth: 2,
-            strokeColor: color,
+            color: color,
+            strokeWidth: 0,
           );
         },
       ),
       belowBarData: BarAreaData(
-        show: true,
-        color: color.withOpacity(0.1),
+        show: false,
       ),
     );
   }
@@ -449,9 +412,9 @@ class ChartPerawatanWidget extends StatelessWidget {
           Expanded(
             child: _buildSummaryItem(
               'Total Kg',
-              '${chartData['totalKg'].toInt()} kg',
+              '${chartData['totalKg'].toInt()} Kg',
               '${chartData['countKg']}x perawatan',
-              const Color(0xFF2196F3),
+              const Color(0xFFFF5722),
             ),
           ),
           Container(
@@ -462,9 +425,9 @@ class ChartPerawatanWidget extends StatelessWidget {
           Expanded(
             child: _buildSummaryItem(
               'Total Liter',
-              '${chartData['totalLiter'].toInt()} L',
+              '${chartData['totalLiter'].toInt()} Liter',
               '${chartData['countLiter']}x perawatan',
-              const Color(0xFFFF9800),
+              const Color(0xFF2196F3),
             ),
           ),
         ],
