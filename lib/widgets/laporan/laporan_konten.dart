@@ -4,6 +4,7 @@ import 'package:ta_project/widgets/laporan/ChartPanen.dart';
 import 'package:ta_project/widgets/laporan/ChartPerawatan.dart';
 import 'package:ta_project/widgets/laporan/laporan_datalist.dart';
 import 'package:ta_project/widgets/laporan/laporan_summary.dart';
+
 import '../../viewsModels/laporan_view_models.dart';
 import '../../models/app_constants.dart';
 import '../../models/laporan_models.dart';
@@ -169,63 +170,11 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Header untuk Tab Data Catatan
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade50, Colors.green.shade100],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.green.shade200, width: 0.5),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(AppColors.primaryGreen),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.description,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Catatan Aktivitas',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade800,
-                      ),
-                    ),
-                    Text(
-                      'Detail perawatan dan panen dari ${laporan.lahan.nama}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        // ...existing header code...
 
         const SizedBox(height: 20),
 
-        // Data Perawatan
+        // Data Perawatan - ✅ TAMBAH lahanNama parameter
         LaporanDataList(
           title: 'Data Perawatan',
           icon: Icons.build_circle,
@@ -233,11 +182,12 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
           perawatanData: laporan.perawatan.data,
           panenData: const [],
           isPerawatan: true,
+          lahanNama: laporan.lahan.nama, // ✅ PASS nama lahan
         ),
 
         const SizedBox(height: 24),
 
-        // Data Panen
+        // Data Panen - ✅ TAMBAH lahanNama parameter
         LaporanDataList(
           title: 'Data Panen',
           icon: Icons.eco,
@@ -245,6 +195,7 @@ class _LaporanContentWidgetState extends State<LaporanContentWidget>
           perawatanData: const [],
           panenData: laporan.panen.data,
           isPerawatan: false,
+          lahanNama: laporan.lahan.nama, // ✅ PASS nama lahan
         ),
       ],
     );

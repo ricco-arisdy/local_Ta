@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../models/laporan_models.dart';
 
-class ChartPanenWidget extends StatelessWidget {
+class ChartPanenWidget extends StatefulWidget {
   final LaporanData laporanData;
 
   const ChartPanenWidget({
@@ -12,13 +12,70 @@ class ChartPanenWidget extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<ChartPanenWidget> createState() => _ChartPanenWidgetState();
+}
+
+class _ChartPanenWidgetState extends State<ChartPanenWidget> {
+  late PageController _pageController;
+  int _currentPage = 0;
+  double _globalMaxY = 100;
+
+  int? _touchedSpotIndex;
+  List<LineBarSpot>? _touchedSpots;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final chartData = _prepareChartData();
+    _globalMaxY = _calculateGlobalMaxY(chartData);
+    final activeSlide = _detectActiveSlide(chartData);
+
+    _pageController = PageController(initialPage: activeSlide);
+    _currentPage = activeSlide;
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  double _calculateGlobalMaxY(Map<String, dynamic> chartData) {
+    final panen1Data = chartData['panen1'] as List<double?>;
+    final panen2Data = chartData['panen2'] as List<double?>;
+
+    double maxY = 0;
+
+    for (var value in [...panen1Data, ...panen2Data]) {
+      if (value != null && value > maxY) {
+        maxY = value;
+      }
+    }
+
+    // Add 20% padding to max
+    maxY = maxY * 1.2;
+
+    // ✅ ROUND UP ke kelipatan 1000
+    if (maxY > 0) {
+      maxY = (maxY / 1000).ceil() * 1000.0;
+    }
+
+    // Default minimum 1000 jika data terlalu kecil
+    if (maxY < 1000) maxY = 1000;
+
+    return maxY;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Group data panen by month
     final chartData = _prepareChartData();
 
     if (chartData['months'].isEmpty) {
       return _buildEmptyState();
     }
+
+    final fullYearMonths = _generateFullYearMonths();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -36,75 +93,170 @@ class ChartPanenWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.agriculture_outlined,
-                  color: Color(0xFF4CAF50),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Grafik Panen',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2C5F2D),
-                      ),
-                    ),
-                    Text(
-                      'Perbandingan hasil panen per bulan',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
+          _buildHeader(),
+          const SizedBox(height: 24),
+          _buildLegend(),
           const SizedBox(height: 24),
 
-          // Legend
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegendItem('Panen Pertama', const Color(0xFF2196F3)),
-              const SizedBox(width: 24),
-              _buildLegendItem('Panen Kedua', const Color(0xFF4CAF50)),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Chart
+          // ✅ IMPROVED: Better layout dengan proper spacing
           SizedBox(
             height: 250,
-            child: LineChart(
-              _buildLineChartData(chartData),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ✅ Fixed Y-Axis
+                _buildFixedYAxis(),
+
+                // ✅ Swipeable Chart Area
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (page) {
+                      setState(() {
+                        _currentPage = page;
+                      });
+                    },
+                    children: [
+                      _buildSwipeableChart(
+                        fullYearMonths.sublist(0, 6),
+                        chartData,
+                        'Jan - Jun',
+                      ),
+                      _buildSwipeableChart(
+                        fullYearMonths.sublist(6, 12),
+                        chartData,
+                        'Jul - Des',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
+          const SizedBox(height: 12),
+          _buildPageIndicator(),
           const SizedBox(height: 16),
-
-          // Summary info
           _buildSummaryInfo(chartData),
         ],
       ),
+    );
+  }
+
+  // ✅ IMPROVED: Fixed Y-Axis dengan better alignment
+  Widget _buildFixedYAxis() {
+    // ✅ Calculate jumlah steps (interval 1000)
+    final int steps = (_globalMaxY / 1000).toInt();
+
+    return Container(
+      width: 55,
+      padding: const EdgeInsets.only(top: 30, bottom: 30),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(steps + 1, (index) {
+          // ✅ Generate dari maxY ke 0 dengan interval 1000
+          final value = _globalMaxY - (index * 1000);
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Text(
+              '${value.toInt()} kg',
+              style: const TextStyle(
+                fontSize: 10,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ✅ IMPROVED: Swipeable chart dengan better spacing
+  Widget _buildSwipeableChart(
+    List<String> slideMonths,
+    Map<String, dynamic> chartData,
+    String slideLabel,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(
+          left: 8, right: 16), // ✅ Tambah padding kiri-kanan
+      child: Column(
+        children: [
+          // Slide label
+          Text(
+            slideLabel,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Chart
+          Expanded(
+            child: LineChart(
+              _buildLineChartData(slideMonths, chartData, _globalMaxY),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4CAF50).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.agriculture_outlined,
+            color: Color(0xFF4CAF50),
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Grafik Panen',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2C5F2D),
+                ),
+              ),
+              Text(
+                'Perbandingan hasil panen per bulan',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegend() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildLegendItem('Panen Pertama', const Color(0xFF2196F3)),
+        const SizedBox(width: 24),
+        _buildLegendItem('Panen Kedua', const Color(0xFF4CAF50)),
+      ],
     );
   }
 
@@ -132,10 +284,68 @@ class ChartPanenWidget extends StatelessWidget {
     );
   }
 
-  Map<String, dynamic> _prepareChartData() {
-    final panenData = laporanData.panen.data;
+  Widget _buildPageIndicator() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildDot(0),
+        const SizedBox(width: 8),
+        _buildDot(1),
+      ],
+    );
+  }
 
-    // Group by year-month
+  Widget _buildDot(int index) {
+    final isActive = _currentPage == index;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: isActive ? 24 : 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFF4CAF50) : Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+
+  List<String> _generateFullYearMonths() {
+    final now = DateTime.now();
+    final currentYear = now.year;
+
+    List<String> months = [];
+    for (int month = 1; month <= 12; month++) {
+      final date = DateTime(currentYear, month);
+      months.add(DateFormat('MMM').format(date));
+    }
+
+    return months;
+  }
+
+  int _detectActiveSlide(Map<String, dynamic> chartData) {
+    final months = chartData['months'] as List<String>;
+
+    if (months.isEmpty) return 0;
+
+    for (var month in months) {
+      try {
+        final now = DateTime.now();
+        for (int m = 7; m <= 12; m++) {
+          final date = DateTime(now.year, m);
+          final monthStr = DateFormat('MMM yy').format(date);
+          if (month == monthStr) {
+            return 1;
+          }
+        }
+      } catch (e) {
+        // Continue
+      }
+    }
+
+    return 0;
+  }
+
+  Map<String, dynamic> _prepareChartData() {
+    final panenData = widget.laporanData.panen.data;
     Map<String, List<PanenLaporanItem>> groupedByMonth = {};
 
     for (var panen in panenData) {
@@ -152,10 +362,8 @@ class ChartPanenWidget extends StatelessWidget {
       }
     }
 
-    // Sort months chronologically
     final sortedMonths = groupedByMonth.keys.toList()..sort();
 
-    // Prepare data for chart
     List<String> months = [];
     List<double?> panen1Data = [];
     List<double?> panen2Data = [];
@@ -163,7 +371,6 @@ class ChartPanenWidget extends StatelessWidget {
     for (var monthKey in sortedMonths) {
       final panenList = groupedByMonth[monthKey]!;
 
-      // Sort by date within month (oldest first)
       panenList.sort((a, b) {
         try {
           return DateTime.parse(a.tanggal).compareTo(DateTime.parse(b.tanggal));
@@ -172,24 +379,19 @@ class ChartPanenWidget extends StatelessWidget {
         }
       });
 
-      // Format month label (e.g., "Jan 2024")
       try {
         final date = DateTime.parse('$monthKey-01');
-        months.add(DateFormat('MMM yy', 'id_ID').format(date));
+        months.add(DateFormat('MMM yy').format(date));
       } catch (e) {
         months.add(monthKey);
       }
 
-      // First harvest of the month
       panen1Data
           .add(panenList.isNotEmpty ? panenList[0].jumlah.toDouble() : null);
-
-      // Second harvest of the month (if exists)
       panen2Data
           .add(panenList.length > 1 ? panenList[1].jumlah.toDouble() : null);
     }
 
-    // Calculate statistics
     int totalPanen1 = 0;
     int totalPanen2 = 0;
     int countPanen1 = 0;
@@ -219,28 +421,42 @@ class ChartPanenWidget extends StatelessWidget {
     };
   }
 
-  LineChartData _buildLineChartData(Map<String, dynamic> chartData) {
-    final months = chartData['months'] as List<String>;
+  LineChartData _buildLineChartData(
+    List<String> slideMonths,
+    Map<String, dynamic> chartData,
+    double maxY,
+  ) {
+    final dataMonths = chartData['months'] as List<String>;
     final panen1Data = chartData['panen1'] as List<double?>;
     final panen2Data = chartData['panen2'] as List<double?>;
 
-    // Find max value for Y-axis
-    double maxY = 0;
-    for (var value in [...panen1Data, ...panen2Data]) {
-      if (value != null && value > maxY) {
-        maxY = value;
+    List<FlSpot> panen1Spots = [];
+    List<FlSpot> panen2Spots = [];
+
+    for (int i = 0; i < slideMonths.length; i++) {
+      final slideMonth = slideMonths[i];
+
+      for (int j = 0; j < dataMonths.length; j++) {
+        final dataMonth = dataMonths[j];
+        final dataMonthName = dataMonth.split(' ')[0];
+
+        if (slideMonth == dataMonthName) {
+          if (panen1Data[j] != null) {
+            panen1Spots.add(FlSpot(i.toDouble(), panen1Data[j]!));
+          }
+          if (panen2Data[j] != null) {
+            panen2Spots.add(FlSpot(i.toDouble(), panen2Data[j]!));
+          }
+          break;
+        }
       }
     }
-
-    // Add 20% padding to max
-    maxY = maxY * 1.2;
-    if (maxY == 0) maxY = 100; // Default if no data
 
     return LineChartData(
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
-        horizontalInterval: maxY / 5,
+        horizontalInterval: 1000,
         getDrawingHorizontalLine: (value) {
           return FlLine(
             color: Colors.grey.shade200,
@@ -249,21 +465,8 @@ class ChartPanenWidget extends StatelessWidget {
         },
       ),
       titlesData: FlTitlesData(
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 45,
-            interval: maxY / 5,
-            getTitlesWidget: (value, meta) {
-              return Text(
-                '${value.toInt()} kg',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey,
-                ),
-              );
-            },
-          ),
+        leftTitles: const AxisTitles(
+          sideTitles: SideTitles(showTitles: false),
         ),
         rightTitles: const AxisTitles(
           sideTitles: SideTitles(showTitles: false),
@@ -278,16 +481,17 @@ class ChartPanenWidget extends StatelessWidget {
             interval: 1,
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
-              if (index >= 0 && index < months.length) {
+              if (index >= 0 && index < slideMonths.length) {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    months[index],
+                    slideMonths[index],
                     style: const TextStyle(
                       fontSize: 10,
                       color: Colors.grey,
                       fontWeight: FontWeight.w500,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 );
               }
@@ -304,83 +508,131 @@ class ChartPanenWidget extends StatelessWidget {
         ),
       ),
       minX: 0,
-      maxX: months.length.toDouble() - 1,
+      maxX: slideMonths.length.toDouble() - 1,
       minY: 0,
       maxY: maxY,
       lineBarsData: [
-        // Line for Panen 1
-        _buildLineChartBarData(
-          panen1Data,
-          const Color(0xFF2196F3),
-          'Panen 1',
+        LineChartBarData(
+          spots: panen1Spots,
+          isCurved: true,
+          curveSmoothness: 0.3,
+          color: const Color(0xFF2196F3),
+          barWidth: 3,
+          isStrokeCapRound: true,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) {
+              return FlDotCirclePainter(
+                radius: 4,
+                color: Colors.white,
+                strokeWidth: 2,
+                strokeColor: const Color(0xFF2196F3),
+              );
+            },
+          ),
+          belowBarData: BarAreaData(
+            show: true,
+            color: const Color(0xFF2196F3).withOpacity(0.1),
+          ),
         ),
-        // Line for Panen 2
-        _buildLineChartBarData(
-          panen2Data,
-          const Color(0xFF4CAF50),
-          'Panen 2',
+        LineChartBarData(
+          spots: panen2Spots,
+          isCurved: true,
+          curveSmoothness: 0.3,
+          color: const Color(0xFF4CAF50),
+          barWidth: 3,
+          isStrokeCapRound: true,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) {
+              return FlDotCirclePainter(
+                radius: 4,
+                color: Colors.white,
+                strokeWidth: 2,
+                strokeColor: const Color(0xFF4CAF50),
+              );
+            },
+          ),
+          belowBarData: BarAreaData(
+            show: true,
+            color: const Color(0xFF4CAF50).withOpacity(0.1),
+          ),
         ),
       ],
-      lineTouchData: LineTouchData(
-        touchTooltipData: LineTouchTooltipData(
-          getTooltipItems: (touchedSpots) {
-            return touchedSpots.map((spot) {
-              final monthIndex = spot.x.toInt();
-              final months = chartData['months'] as List<String>;
-              final month =
-                  monthIndex < months.length ? months[monthIndex] : '';
-              final isPanen1 = spot.barIndex == 0;
 
-              return LineTooltipItem(
-                '${isPanen1 ? 'Panen 1' : 'Panen 2'}\n$month\n${spot.y.toInt()} kg',
-                const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              );
+      // ✅ SOLUTION: Smart tooltip dengan auto-positioning
+      lineTouchData: LineTouchData(
+        enabled: true,
+        handleBuiltInTouches: true,
+        touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+          if (response != null && response.lineBarSpots != null) {
+            setState(() {
+              _touchedSpots = response.lineBarSpots;
+              _touchedSpotIndex = response.lineBarSpots!.first.spotIndex;
+            });
+          } else {
+            setState(() {
+              _touchedSpots = null;
+              _touchedSpotIndex = null;
+            });
+          }
+        },
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipColor: (touchedSpot) => Colors.black87,
+
+          // ✅ SMART POSITIONING: Adjust berdasarkan posisi X
+          tooltipMargin: 8,
+          tooltipPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          tooltipRoundedRadius: 8,
+
+          // ✅ Rotate tooltip jika dekat edge
+          rotateAngle: 0,
+
+          getTooltipItems: (touchedSpots) {
+            if (touchedSpots.isEmpty) return [];
+
+            final monthIndex = touchedSpots.first.x.toInt();
+            final month =
+                monthIndex < slideMonths.length ? slideMonths[monthIndex] : '';
+
+            // ✅ Deteksi posisi: kiri, tengah, atau kanan
+            final isLeftEdge = monthIndex <= 1;
+            final isRightEdge = monthIndex >= slideMonths.length - 2;
+
+            // ✅ Build combined text dengan formatting
+            String tooltipText = '$month\n';
+
+            for (var spot in touchedSpots) {
+              final label = spot.barIndex == 0 ? 'P1' : 'P2';
+              final value = spot.y.toInt();
+              tooltipText += '$label: $value kg\n';
+            }
+
+            // ✅ Return HANYA 1 tooltip untuk spot pertama
+            return touchedSpots.asMap().entries.map((entry) {
+              if (entry.key == 0) {
+                return LineTooltipItem(
+                  tooltipText.trim(),
+                  TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: isLeftEdge || isRightEdge ? 9 : 10,
+                    height: 1.3,
+                  ),
+                  // ✅ Align text berdasarkan posisi
+                  textAlign: isLeftEdge
+                      ? TextAlign.left
+                      : (isRightEdge ? TextAlign.right : TextAlign.center),
+                );
+              } else {
+                return LineTooltipItem('', const TextStyle(fontSize: 0));
+              }
             }).toList();
           },
         ),
-        handleBuiltInTouches: true,
-      ),
-    );
-  }
-
-  LineChartBarData _buildLineChartBarData(
-    List<double?> data,
-    Color color,
-    String label,
-  ) {
-    // Convert data to FlSpot, filtering out null values
-    final spots = <FlSpot>[];
-    for (int i = 0; i < data.length; i++) {
-      if (data[i] != null) {
-        spots.add(FlSpot(i.toDouble(), data[i]!));
-      }
-    }
-
-    return LineChartBarData(
-      spots: spots,
-      isCurved: true,
-      curveSmoothness: 0.3,
-      color: color,
-      barWidth: 3,
-      isStrokeCapRound: true,
-      dotData: FlDotData(
-        show: true,
-        getDotPainter: (spot, percent, barData, index) {
-          return FlDotCirclePainter(
-            radius: 4,
-            color: Colors.white,
-            strokeWidth: 2,
-            strokeColor: color,
-          );
-        },
-      ),
-      belowBarData: BarAreaData(
-        show: true,
-        color: color.withOpacity(0.1),
       ),
     );
   }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../models/laporan_models.dart';
 import '../../models/app_constants.dart';
+import '../../models/panen_models.dart';
+import '../../models/perawatan_models.dart';
+import '../panen/panen_card.dart';
+import '../perawatan/perawatan_card.dart';
 
 class LaporanDataList extends StatelessWidget {
   final String title;
@@ -10,6 +13,7 @@ class LaporanDataList extends StatelessWidget {
   final List<PerawatanLaporanItem> perawatanData;
   final List<PanenLaporanItem> panenData;
   final bool isPerawatan;
+  final String? lahanNama;
 
   const LaporanDataList({
     super.key,
@@ -19,14 +23,11 @@ class LaporanDataList extends StatelessWidget {
     required this.perawatanData,
     required this.panenData,
     required this.isPerawatan,
+    this.lahanNama,
   });
 
   @override
   Widget build(BuildContext context) {
-    final formatCurrency =
-        NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-    final formatDate = DateFormat('dd/MM/yyyy');
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -47,82 +48,74 @@ class LaporanDataList extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        // Data List
+        // Data List - Menggunakan Card yang sudah ada
         if (isPerawatan && perawatanData.isEmpty)
           _buildEmptyState('Belum ada data perawatan')
         else if (!isPerawatan && panenData.isEmpty)
           _buildEmptyState('Belum ada data panen')
         else if (isPerawatan)
-          ...perawatanData.map(
-              (item) => _buildPerawatanCard(item, formatCurrency, formatDate))
+          ...perawatanData.map((item) => _buildPerawatanCardWrapper(item))
         else
-          ...panenData
-              .map((item) => _buildPanenCard(item, formatCurrency, formatDate)),
+          ...panenData.map((item) => _buildPanenCardWrapper(item)),
       ],
     );
   }
 
-  Widget _buildPerawatanCard(
-    PerawatanLaporanItem item,
-    NumberFormat formatCurrency,
-    DateFormat formatDate,
-  ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.orange.shade100,
-          child: Icon(Icons.build, color: Colors.orange.shade700, size: 20),
-        ),
-        title: Text(
-          item.kegiatan,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          '${_formatDateForDisplay(item.tanggal, formatDate)} • ${item.jumlah} unit',
-        ),
-        trailing: Text(
-          formatCurrency.format(item.biaya),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.red.shade700,
-            fontSize: 14,
-          ),
-        ),
+  // Convert LaporanItem ke Perawatan model
+  Widget _buildPerawatanCardWrapper(PerawatanLaporanItem laporanItem) {
+    final perawatan = Perawatan(
+      id: laporanItem.id,
+      kebunId: laporanItem.kebunId,
+      kegiatan: laporanItem.kegiatan,
+      tanggal: laporanItem.tanggal,
+      jumlah: laporanItem.jumlah,
+      satuan: laporanItem.satuan,
+      biaya: laporanItem.biaya,
+      catatan: laporanItem.catatan,
+      namaKebun: lahanNama,
+      lokasiKebun: null,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: PerawatanCard(
+        perawatan: perawatan,
+        kebunNama: lahanNama,
+        onTap: () => _showPerawatanDetail(perawatan),
       ),
     );
   }
 
-  Widget _buildPanenCard(
-    PanenLaporanItem item,
-    NumberFormat formatCurrency,
-    DateFormat formatDate,
-  ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: const Color(AppColors.lightGreen),
-          child: Icon(Icons.eco,
-              color: const Color(AppColors.darkGreen), size: 20),
-        ),
-        title: Text(
-          '${item.jumlah} kg',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          '${_formatDateForDisplay(item.tanggal, formatDate)} • ${formatCurrency.format(item.harga)}/kg',
-        ),
-        trailing: Text(
-          formatCurrency.format(item.total),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(AppColors.primaryGreen),
-            fontSize: 14,
-          ),
-        ),
+  // Convert LaporanItem ke Panen model
+  Widget _buildPanenCardWrapper(PanenLaporanItem laporanItem) {
+    // Convert LaporanItem ke Panen model
+    final panen = Panen(
+      id: laporanItem.id,
+      lahanId: laporanItem.lahanId,
+      tanggal: laporanItem.tanggal,
+      jumlah: laporanItem.jumlah,
+      harga: laporanItem.harga,
+      catatan: laporanItem.catatan,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: PanenCard(
+        panen: panen,
+        lahanNama: lahanNama,
+        onTap: () => _showPanenDetail(panen),
       ),
     );
+  }
+
+  // dialog untuk Perawatan (read-only)
+  void _showPerawatanDetail(Perawatan perawatan) {
+    print('Show detail perawatan: ${perawatan.id}');
+  }
+
+  // dialog untuk Panen (read-only)
+  void _showPanenDetail(Panen panen) {
+    print('Show detail panen: ${panen.id}');
   }
 
   Widget _buildEmptyState(String message) {
@@ -146,14 +139,5 @@ class LaporanDataList extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatDateForDisplay(String dateStr, DateFormat formatter) {
-    try {
-      final date = DateTime.parse(dateStr);
-      return formatter.format(date);
-    } catch (e) {
-      return dateStr;
-    }
   }
 }

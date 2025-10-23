@@ -25,21 +25,6 @@ class Perawatan {
     this.namaUser,
   });
 
-  // factory Perawatan.fromJson(Map<String, dynamic> json) {
-  //   return Perawatan(
-  //     id: json['id'] ?? 0,
-  //     kebunId: json['kebun_id'] ?? 0,
-  //     kegiatan: json['kegiatan'] ?? '',
-  //     tanggal: json['tanggal'] ?? '',
-  //     jumlah: json['jumlah'] ?? 0,
-  //     satuan: json['satuan'],
-  //     biaya: json['biaya'] ?? 0,
-  //     catatan: json['catatan'],
-  //     namaKebun: json['nama_kebun'],
-  //     lokasiKebun: json['lokasi_kebun'],
-  //     namaUser: json['nama_user'],
-  //   );
-  // }
   factory Perawatan.fromJson(Map<String, dynamic> json) {
     // Normalisasi satuan dari database
     String? normalizedSatuan;
@@ -65,7 +50,7 @@ class Perawatan {
       kegiatan: json['kegiatan'] ?? '',
       tanggal: json['tanggal'] ?? '',
       jumlah: json['jumlah'] ?? 0,
-      satuan: normalizedSatuan, // ✅ Gunakan satuan yang sudah dinormalisasi
+      satuan: normalizedSatuan,
       biaya: json['biaya'] ?? 0,
       catatan: json['catatan'],
       namaKebun: json['nama_kebun'],
@@ -96,7 +81,7 @@ class Perawatan {
       DateTime parsedDate = DateTime.parse(tanggal);
       return '${parsedDate.day.toString().padLeft(2, '0')}-${parsedDate.month.toString().padLeft(2, '0')}-${parsedDate.year}';
     } catch (e) {
-      return tanggal; // Return original if parsing fails
+      return tanggal;
     }
   }
 

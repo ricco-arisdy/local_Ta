@@ -111,37 +111,6 @@ class PerawatanLaporan {
   }
 }
 
-// class PerawatanLaporanItem {
-//   final int id;
-//   final int kebunId;
-//   final String kegiatan;
-//   final String tanggal;
-//   final int jumlah;
-//   final int biaya;
-//   final String? catatan;
-
-//   PerawatanLaporanItem({
-//     required this.id,
-//     required this.kebunId,
-//     required this.kegiatan,
-//     required this.tanggal,
-//     required this.jumlah,
-//     required this.biaya,
-//     this.catatan,
-//   });
-
-//   factory PerawatanLaporanItem.fromJson(Map<String, dynamic> json) {
-//     return PerawatanLaporanItem(
-//       id: json['id'] ?? 0,
-//       kebunId: json['kebun_id'] ?? 0,
-//       kegiatan: json['kegiatan'] ?? '',
-//       tanggal: json['tanggal'] ?? '',
-//       jumlah: json['jumlah'] ?? 0,
-//       biaya: json['biaya'] ?? 0,
-//       catatan: json['catatan'],
-//     );
-//   }
-// }
 class PerawatanLaporanItem {
   final int id;
   final int kebunId;

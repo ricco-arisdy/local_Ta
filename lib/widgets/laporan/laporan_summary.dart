@@ -158,8 +158,6 @@ class LaporanSummaryCard extends StatelessWidget {
   }
 
   Widget _buildSubtitle() {
-    // ✅ TAMBAHKAN: Cek apakah ini halaman Keuangan (page 0)
-    // Jika bukan halaman Keuangan, jangan tampilkan subtitle
     if (currentPage != 0) {
       return const SizedBox.shrink();
     }
@@ -167,6 +165,7 @@ class LaporanSummaryCard extends StatelessWidget {
     final isFiltered = summaryData['isFiltered'] ?? false;
     final totalLahan = summaryData['totalLahan'] ?? 0;
     final lahanName = summaryData['lahanName'] ?? '';
+    final lahanLokasi = summaryData['lahanLokasi'] ?? '';
     final totalPerawatan = summaryData['totalPerawatan'] ?? 0;
     final totalPanen = summaryData['totalPanen'] ?? 0;
 
@@ -178,31 +177,89 @@ class LaporanSummaryCard extends StatelessWidget {
       children: [
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.7),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.blue.shade200, width: 0.5),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isFiltered ? Icons.filter_list : Icons.dashboard,
-                size: 12,
-                color: Colors.blue.shade700,
+          child: isFiltered && lahanName.isNotEmpty
+              ? _buildFilteredSubtitle(lahanName, lahanLokasi)
+              : _buildUnfilteredSubtitle(totalLahan),
+        ),
+      ],
+    );
+  }
+
+  //Widget untuk subtitle FILTERED (dengan nama lahan + lokasi dalam 1 baris)
+  Widget _buildFilteredSubtitle(String lahanName, String lahanLokasi) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Icon Filter
+        Icon(
+          Icons.filter_list,
+          size: 12,
+          color: Colors.blue.shade700,
+        ),
+        const SizedBox(width: 4),
+
+        // Nama Lahan
+        Flexible(
+          child: Text(
+            'Filter: $lahanName',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.blue.shade700,
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+
+        if (lahanLokasi.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Icon(
+            Icons.location_on,
+            size: 12,
+            color: Colors.grey.shade600,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              lahanLokasi,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(width: 4),
-              Text(
-                _getSubtitleText(isFiltered, totalLahan, totalPerawatan,
-                    totalPanen, lahanName),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.blue.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // Widget untuk subtitle UNFILTERED (total lahan aktif)
+  Widget _buildUnfilteredSubtitle(int totalLahan) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.dashboard,
+          size: 12,
+          color: Colors.blue.shade700,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '$totalLahan Lahan Aktif',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.blue.shade700,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -232,7 +289,7 @@ class LaporanSummaryCard extends StatelessWidget {
         );
       },
       child: Container(
-        key: ValueKey(currentPage), // Important for AnimatedSwitcher
+        key: ValueKey(currentPage),
         child: _getPageContent(formatCurrency),
       ),
     );
@@ -726,17 +783,6 @@ class LaporanSummaryCard extends StatelessWidget {
         return Icons.assessment_outlined; // 🎯 Icon untuk Detail
       default:
         return Icons.account_balance_wallet;
-    }
-  }
-
-  String _getSubtitleText(bool isFiltered, int totalLahan, int totalPerawatan,
-      int totalPanen, String lahanName) {
-    if (isFiltered && lahanName.isNotEmpty) {
-      return 'Filter: $lahanName • $totalPerawatan Perawatan • $totalPanen Panen';
-    } else if (isFiltered) {
-      return 'Terfilter • $totalPerawatan Perawatan • $totalPanen Panen';
-    } else {
-      return '$totalLahan Lahan Aktif';
     }
   }
 

@@ -101,6 +101,7 @@ class LaporanViewModel extends ChangeNotifier {
         'totalPanen': _currentLaporan!.panen.totalRecords,
         'isFiltered': true,
         'lahanName': _currentLaporan!.lahan.nama,
+        'lahanLokasi': _currentLaporan!.lahan.lokasi,
         'totalLahan': 1,
         'luasLahan': luasLahan, // ✅ Dari lahan yang dipilih
         'totalPerawatanRecords': _currentLaporan!.perawatan.totalRecords,
@@ -120,6 +121,7 @@ class LaporanViewModel extends ChangeNotifier {
         'totalPanen': _summaryKeseluruhan!.totalPanenRecords,
         'totalLahan': _summaryKeseluruhan!.totalLahan,
         'isFiltered': false,
+        'lahanLokasi': '',
         'luasLahan':
             _summaryKeseluruhan!.totalLuasLahan, // ✅ PERBAIKAN: Dari field baru
         'totalPerawatanRecords': _summaryKeseluruhan!.totalPerawatanRecords,
@@ -139,6 +141,7 @@ class LaporanViewModel extends ChangeNotifier {
         'totalPanen': 0,
         'totalLahan': 0,
         'isFiltered': false,
+        'lahanLokasi': '',
         'luasLahan': '0 Ha',
         'totalPerawatanRecords': 0,
         'totalJumlahKg': 0,
